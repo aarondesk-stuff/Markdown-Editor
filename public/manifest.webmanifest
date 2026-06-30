@@ -1,0 +1,18 @@
+{
+  "name": "Markdown Editor",
+  "short_name": "Markdown Editor",
+  "description": "A two-pane Markdown editor with live preview, open, save, and print support.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
