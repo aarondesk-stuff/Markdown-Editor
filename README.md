@@ -1,104 +1,86 @@
 # Markdown Editor
 
-A cross-platform, web-based Markdown editor built with React, TypeScript, and Vite.
+An elegant, dual-pane Markdown editor built with React, TypeScript, and Vite. It is distributed in two distinct final software versions:
+
+1. **Web-Based Application**: Runs in any modern web browser and can be deployed to static web hosting. Supports PWA installation for a standalone window experience.
+2. **Self-Contained Desktop Application (Tauri)**: A native macOS desktop application. Features a transparent overlay titlebar, sync-scrolling, auto-saving directly to disk, statistics, formatting toolbar, and native keyboard shortcuts.
+
+---
 
 ## Features
 
-- Two-pane layout: Markdown source on the left and live rendered preview on the right.
-- Packaged desktop app support with Tauri.
-- Open local `.md`, `.markdown`, and `.txt` files.
-- Save back to an opened file in the Tauri desktop app and in browsers that support the File System Access API.
-- Save As / download fallback for broader browser support.
-- Print the rendered preview.
-- Keyboard shortcuts:
-  - `Ctrl/Cmd + O`: Open
-  - `Ctrl/Cmd + S`: Save
-  - `Ctrl/Cmd + P`: Print
-- Responsive layout for smaller screens.
+- **Live Dual-Pane Workspace**: Edit Markdown on the left with a live rendered preview on the right.
+- **Sync Scroll**: Scrolling the editor pane automatically synchronizes the preview scroll position.
+- **Formatting Toolbar**: Quick-insert buttons for formatting text (Bold, Italic, Header sizes, lists, quotes, inline code, code blocks, and links).
+- **Document Statistics**: Live indicators showing line count, word count, character count, and estimated reading time.
+- **Auto-Save Option**: Automatically saves modifications back to disk 1 second after typing stops (requires an open file path).
+- **Drag-and-Drop File Loading**: Drag and drop any `.md` or `.txt` file onto the window to open it.
+- **Print & PDF Export**: Clean, print-styled preview layout for paper or PDF export.
+- **Native Keyboard Shortcuts**:
+  - `Cmd/Ctrl + N`: New File
+  - `Cmd/Ctrl + O`: Open File
+  - `Cmd/Ctrl + S`: Save File
+  - `Cmd/Ctrl + P`: Print Preview
 
-## Getting started
+---
 
-### Run without typing npm commands
+## 1. Web-Based Version
 
-You can launch the app without manually typing npm commands:
+The web-based version is served as static HTML/JS/CSS assets. 
 
-- **macOS:** double-click `start-mac.command`.
-- **Windows:** double-click `start-windows.bat`.
-- **VS Code:** use **Terminal > Run Task... > dev**.
-
-The first launch may install dependencies automatically if `node_modules` is missing. Node.js still needs to be installed on the computer because this is a web development project.
-
-To stop the app, return to the terminal window that opened and press `Ctrl + C`.
-
-### Run in a dedicated app window
-
-The app now includes Progressive Web App support, so supported browsers can install it into a standalone window:
-
-1. Start or preview the app.
-2. Open it in Chrome, Edge, or another PWA-capable browser.
-3. Use the browser's install option, usually shown as **Install**, **Install app**, or an install icon in the address bar.
-4. Launch **Markdown Editor** from your Applications folder, Start menu, Dock, or app launcher.
-
-This keeps the project web-first and cross-platform. A pure web app still needs to be served from somewhere, such as the local launcher, a preview server, or a hosted website.
-
-### Run as a full desktop app with Tauri
-
-This project is also configured as a Tauri desktop app.
-
-Run the desktop app in development mode:
-
-```bash
-npm run desktop:dev
-```
-
-Build the macOS desktop app bundle:
-
-```bash
-npm run desktop:build
-```
-
-The built app is created here:
-
-```text
-src-tauri/target/release/bundle/macos/Markdown Editor.app
-```
-
-You can double-click that `.app` bundle, or copy it to your Applications folder.
-
-To attempt every installer/bundle type supported by your platform, run:
-
-```bash
-npm run desktop:build:all
-```
-
-On macOS, `desktop:build` intentionally builds the `.app` bundle directly. The all-bundles command may require additional platform tooling for installer formats such as `.dmg`.
-
-### Manual commands
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start the development server:
-
+### Local Development
+To start the local web development server:
 ```bash
 npm run dev
 ```
 
-Build for production:
-
+### Production Build
+To compile the static assets for web hosting:
 ```bash
 npm run build
 ```
+The compiled output is created in the `dist` directory, which can be deployed to GitHub Pages, Vercel, Netlify, or any web server.
 
-Preview the production build:
+### Progressive Web App (PWA)
+When running on HTTPS (or localhost), you can install the app to your system in a standalone window using the browser's install prompt.
 
+---
+
+## 2. Self-Contained Desktop App (Tauri)
+
+The desktop version is compiled to a native macOS `.app` bundle using Tauri, offering native file dialogs and low-level system integration.
+
+### Local Development
+To launch the desktop app in development mode:
 ```bash
-npm run preview
+npm run desktop:dev
 ```
 
-## Browser notes
+### Production Build (macOS)
+To compile and package the self-contained macOS `.app` bundle:
+```bash
+npm run desktop:build
+```
+The final application is built here:
+```text
+src-tauri/target/release/bundle/macos/Markdown Editor.app
+```
+You can drag this bundle to your **Applications** folder to run it.
 
-The app is fully web-based. Chromium-based browsers can save directly to selected files through the File System Access API. Other browsers use standard upload/download fallbacks for opening and saving files.
+---
+
+## Startup & Utilities
+
+### No-Command Launchers
+For convenience, you can launch the local web server without manually running commands:
+- **macOS**: Double-click `start-mac.command`
+- **Windows**: Double-click `start-windows.bat`
+- **VS Code**: Run the preconfigured task: `Terminal > Run Task... > dev`
+
+### Git Auto-Commit Watcher
+To automatically back up your work to your GitHub repository as you make changes:
+```bash
+npm run watch:git
+```
+This starts a background monitor that auto-commits and pushes any changes to GitHub after 10 seconds of keyboard inactivity.
+
