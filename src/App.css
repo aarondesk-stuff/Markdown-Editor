@@ -290,3 +290,141 @@ textarea {
     padding: 0;
   }
 }
+
+/* Auto-save Switch styles */
+.autosave-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.75rem;
+}
+
+.autosave-label {
+  font-size: 0.85rem;
+  font-weight: 550;
+  color: var(--muted);
+  user-select: none;
+}
+
+.autosave-label.disabled {
+  color: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 2.2rem;
+  height: 1.2rem;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border);
+  transition: .2s;
+  border-radius: 1.2rem;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 0.85rem;
+  width: 0.85rem;
+  left: 0.18rem;
+  bottom: 0.17rem;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--accent);
+}
+
+input:disabled + .slider {
+  background-color: var(--border);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input:checked + .slider:before {
+  transform: translateX(1rem);
+}
+
+/* Formatting Toolbar Styles */
+.formatting-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  user-select: none;
+}
+
+.formatting-toolbar button {
+  border: none;
+  background: transparent;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.formatting-toolbar button:hover {
+  background: var(--code-bg);
+  color: var(--text);
+  box-shadow: none;
+  transform: none;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--border);
+  margin: 0 0.35rem;
+}
+
+/* Stats indicator styles */
+.stats-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.stats-indicator .separator {
+  color: var(--border);
+  font-size: 0.8rem;
+  margin: 0 0.1rem;
+}
+
+/* macOS title bar overlay adaptation */
+.macos-tauri .toolbar {
+  padding-left: 80px; /* Space for Apple's traffic light buttons */
+}
+
+@media (max-width: 800px) {
+  .macos-tauri .toolbar {
+    padding-left: 1rem; /* Reset mobile to original if stacked */
+  }
+}
+

@@ -11,7 +11,8 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build --bundles app",
-    "desktop:build:all": "tauri build"
+    "desktop:build:all": "tauri build",
+    "watch:git": "node scripts/git-autocommit.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

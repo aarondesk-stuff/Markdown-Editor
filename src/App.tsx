@@ -63,11 +63,25 @@ function App() {
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null)
   const [lastSavedContent, setLastSavedContent] = useState(starterMarkdown)
   const [status, setStatus] = useState('Ready')
+  const [isMacTauri, setIsMacTauri] = useState(false)
+  const [isAutoSave, setIsAutoSave] = useState(() => {
+    return localStorage.getItem('markdown-autosave') === 'true'
+  })
+
   const fallbackFileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const previewRef = useRef<HTMLElement>(null)
 
   const isModified = content !== lastSavedContent
 
   const renderedMarkdown = useMemo(() => markdown.render(content), [content])
+
+  // Detect macOS inside Tauri
+  useEffect(() => {
+    if (isTauriDesktop() && navigator.userAgent.includes('Mac')) {
+      setIsMacTauri(true)
+    }
+  }, [])
 
   const loadFile = useCallback(async (file: File, handle?: FileSystemFileHandle) => {
     const text = await file.text()
@@ -241,12 +255,107 @@ function App() {
     requestAnimationFrame(() => window.print())
   }, [])
 
+  // Auto-Save Effect
+  useEffect(() => {
+    if (!isAutoSave) return
+    if (!currentFilePath && !fileHandle) return
+    if (content === lastSavedContent) return
+
+    const timer = setTimeout(() => {
+      void saveFile()
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [content, isAutoSave, currentFilePath, fileHandle, lastSavedContent, saveFile])
+
+  // New File Handler
+  const handleNewFile = useCallback(() => {
+    if (isModified) {
+      const confirmNew = window.confirm('You have unsaved changes. Are you sure you want to create a new file?')
+      if (!confirmNew) return
+    }
+    setContent('')
+    setFileName('untitled.md')
+    setCurrentFilePath(null)
+    setFileHandle(null)
+    setLastSavedContent('')
+    setStatus('Created new file')
+  }, [isModified])
+
+  // Formatting helper
+  const insertFormat = useCallback((prefix: string, suffix: string = '') => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selected = text.substring(start, end)
+    const replacement = prefix + selected + suffix
+
+    setContent(text.substring(0, start) + replacement + text.substring(end))
+
+    requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length)
+    })
+  }, [])
+
+  // Sync scroll
+  const handleEditorScroll = (event: React.UIEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget
+    const preview = previewRef.current
+    if (!preview) return
+
+    const denom = textarea.scrollHeight - textarea.clientHeight
+    if (denom <= 0) return
+    const scrollPercentage = textarea.scrollTop / denom
+    preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight)
+  }
+
+  // Drag and Drop handlers
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+  }, [])
+
+  const handleDrop = useCallback(async (event: React.DragEvent) => {
+    event.preventDefault()
+    const file = event.dataTransfer.files?.[0]
+    if (!file) return
+
+    const isText = file.type.startsWith('text/') || 
+                   file.name.endsWith('.md') || 
+                   file.name.endsWith('.markdown') || 
+                   file.name.endsWith('.txt')
+    
+    if (!isText) {
+      setStatus('Unsupported file type dropped')
+      return
+    }
+
+    await loadFile(file)
+  }, [loadFile])
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    const chars = content.length
+    const cleanContent = content.trim()
+    const words = cleanContent === '' ? 0 : cleanContent.split(/\s+/).length
+    const lines = content === '' ? 0 : content.split('\n').length
+    const readingTime = Math.ceil(words / 200)
+    return { chars, words, lines, readingTime }
+  }, [content])
+
   useEffect(() => {
     const handleKeyboardShortcut = (event: KeyboardEvent) => {
       const modifier = event.metaKey || event.ctrlKey
       if (!modifier) return
 
       const key = event.key.toLowerCase()
+      if (key === 'n') {
+        event.preventDefault()
+        handleNewFile()
+      }
       if (key === 'o') {
         event.preventDefault()
         void openFile()
@@ -263,20 +372,42 @@ function App() {
 
     window.addEventListener('keydown', handleKeyboardShortcut)
     return () => window.removeEventListener('keydown', handleKeyboardShortcut)
-  }, [openFile, printFile, saveFile])
+  }, [openFile, printFile, saveFile, handleNewFile])
 
   return (
-    <main className="app-shell">
-      <header className="toolbar" aria-label="Markdown editor toolbar">
-        <div className="document-meta">
-          <h1>Markdown Editor</h1>
-          <p title={fileName}>
+    <main 
+      className={`app-shell ${isMacTauri ? 'macos-tauri' : ''}`}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <header className="toolbar" data-tauri-drag-region aria-label="Markdown editor toolbar">
+        <div className="document-meta" data-tauri-drag-region>
+          <h1 data-tauri-drag-region>Markdown Editor</h1>
+          <p title={fileName} data-tauri-drag-region>
             {fileName}
             {isModified ? ' • unsaved changes' : ''}
           </p>
         </div>
 
         <div className="toolbar-actions">
+          <div className="autosave-container">
+            <label className="switch" title="Auto-save modifications to disk">
+              <input
+                type="checkbox"
+                checked={isAutoSave}
+                onChange={(e) => setIsAutoSave(e.target.checked)}
+                disabled={!currentFilePath && !fileHandle}
+              />
+              <span className="slider round"></span>
+            </label>
+            <span className={`autosave-label ${(!currentFilePath && !fileHandle) ? 'disabled' : ''}`}>
+              Auto-Save
+            </span>
+          </div>
+
+          <button type="button" onClick={handleNewFile} title="New file (Ctrl/Cmd+N)">
+            New
+          </button>
           <button type="button" onClick={openFile} title="Open Markdown file (Ctrl/Cmd+O)">
             Open
           </button>
@@ -304,13 +435,62 @@ function App() {
         <section className="pane source-pane" aria-label="Markdown source pane">
           <div className="pane-header">
             <h2>Markdown</h2>
-            <span>{content.length.toLocaleString()} characters</span>
+            <div className="stats-indicator">
+              <span>{stats.lines.toLocaleString()} lines</span>
+              <span className="separator">|</span>
+              <span>{stats.words.toLocaleString()} words</span>
+              <span className="separator">|</span>
+              <span>{stats.chars.toLocaleString()} chars</span>
+              <span className="separator">|</span>
+              <span>{stats.readingTime} min read</span>
+            </div>
           </div>
+          
+          <div className="formatting-toolbar">
+            <button type="button" onClick={() => insertFormat('**', '**')} title="Bold text">
+              <strong>B</strong>
+            </button>
+            <button type="button" onClick={() => insertFormat('_', '_')} title="Italic text">
+              <em>I</em>
+            </button>
+            <button type="button" onClick={() => insertFormat('# ')} title="Heading 1">
+              H1
+            </button>
+            <button type="button" onClick={() => insertFormat('## ')} title="Heading 2">
+              H2
+            </button>
+            <button type="button" onClick={() => insertFormat('### ')} title="Heading 3">
+              H3
+            </button>
+            <span className="toolbar-divider" />
+            <button type="button" onClick={() => insertFormat('- ')} title="Bullet list">
+              • List
+            </button>
+            <button type="button" onClick={() => insertFormat('1. ')} title="Numbered list">
+              1. List
+            </button>
+            <button type="button" onClick={() => insertFormat('> ')} title="Blockquote">
+              ” Quote
+            </button>
+            <span className="toolbar-divider" />
+            <button type="button" onClick={() => insertFormat('`', '`')} title="Inline code">
+              <code>Code</code>
+            </button>
+            <button type="button" onClick={() => insertFormat('```markdown\n', '\n```')} title="Code block">
+              Code Block
+            </button>
+            <button type="button" onClick={() => insertFormat('[', '](https://)')} title="Insert link">
+              Link
+            </button>
+          </div>
+
           <textarea
+            ref={textareaRef}
             aria-label="Markdown source"
             spellCheck="true"
             value={content}
             onChange={(event) => setContent(event.target.value)}
+            onScroll={handleEditorScroll}
           />
         </section>
 
@@ -320,6 +500,7 @@ function App() {
             <span>{status}</span>
           </div>
           <article
+            ref={previewRef}
             className="markdown-preview"
             dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
           />
