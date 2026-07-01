@@ -127,7 +127,7 @@ textarea {
   border: 0;
   color: var(--text);
   background: var(--editor-bg);
-  font: 0.98rem/1.6 var(--mono);
+  font: var(--content-size, 16px)/1.6 var(--mono);
   padding: 1rem;
 }
 
@@ -136,6 +136,7 @@ textarea {
   overflow: auto;
   padding: clamp(1rem, 3vw, 2rem);
   color: var(--text);
+  font-size: var(--content-size, 16px);
   line-height: 1.7;
 }
 
@@ -415,6 +416,71 @@ input:checked + .slider:before {
   color: var(--border);
   font-size: 0.8rem;
   margin: 0 0.1rem;
+}
+
+/* Font size control */
+.font-size-control {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: var(--button-bg);
+}
+
+.font-size-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+  box-shadow: none !important;
+}
+
+.font-size-btn:hover:not(:disabled) {
+  background: var(--code-bg);
+  transform: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.font-size-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.font-size-display {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 2.8rem;
+  text-align: center;
+  padding: 0 0.2rem;
+  user-select: none;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  line-height: 1;
+}
+
+/* Dark mode / theme toggle button */
+.theme-toggle-btn {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.6rem;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+
+.theme-toggle-btn:hover {
+  transform: rotate(15deg) scale(1.15);
 }
 
 /* macOS title bar overlay adaptation */

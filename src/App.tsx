@@ -37,6 +37,49 @@ const isTauriDesktop = () => Boolean(window.__TAURI_INTERNALS__)
 
 const getBaseName = (filePath: string) => filePath.split(/[\\/]/).pop() || filePath
 
+// ── IndexedDB helpers for persisting FileSystemFileHandles in the browser ──
+const IDB_NAME = 'markdown-editor'
+const IDB_STORE = 'state'
+
+function openIDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1)
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function idbPut(key: string, value: unknown): Promise<void> {
+  const db = await openIDB()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite')
+    tx.objectStore(IDB_STORE).put(value, key)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function idbGet<T>(key: string): Promise<T | undefined> {
+  const db = await openIDB()
+  return new Promise<T | undefined>((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly')
+    const req = tx.objectStore(IDB_STORE).get(key)
+    req.onsuccess = () => resolve(req.result as T | undefined)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function idbDelete(key: string): Promise<void> {
+  const db = await openIDB()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite')
+    tx.objectStore(IDB_STORE).delete(key)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 const starterMarkdown = `# Markdown Editor
 
 Type Markdown on the left and see the rendered document on the right.
@@ -67,6 +110,31 @@ function App() {
   const [isAutoSave, setIsAutoSave] = useState(() => {
     return localStorage.getItem('markdown-autosave') === 'true'
   })
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const stored = localStorage.getItem('markdown-darkmode')
+    if (stored !== null) return stored === 'true'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
+  // Sync dark mode to html element
+  useEffect(() => {
+    document.documentElement.dataset.theme = isDarkMode ? 'dark' : ''
+    localStorage.setItem('markdown-darkmode', String(isDarkMode))
+  }, [isDarkMode])
+
+  const [fontSize, setFontSize] = useState(() => {
+    const stored = localStorage.getItem('markdown-fontsize')
+    return stored !== null ? Number(stored) : 16
+  })
+
+  const MIN_FONT = 12
+  const MAX_FONT = 28
+
+  // Sync font size to CSS custom property
+  useEffect(() => {
+    document.documentElement.style.setProperty('--content-size', `${fontSize}px`)
+    localStorage.setItem('markdown-fontsize', String(fontSize))
+  }, [fontSize])
 
   const fallbackFileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -81,6 +149,76 @@ function App() {
     if (isTauriDesktop() && navigator.userAgent.includes('Mac')) {
       setIsMacTauri(true)
     }
+  }, [])
+
+  // ── Persist the last-opened file so we can reopen it on next launch ──
+  useEffect(() => {
+    if (currentFilePath) {
+      localStorage.setItem('markdown-last-path', currentFilePath)
+    }
+  }, [currentFilePath])
+
+  useEffect(() => {
+    if (fileHandle) {
+      void idbPut('last-handle', fileHandle)
+    }
+  }, [fileHandle])
+
+  // ── Auto-reopen last file on startup ──
+  useEffect(() => {
+    async function reopenLastFile() {
+      // Tauri desktop: path is stored in localStorage
+      if (isTauriDesktop()) {
+        const lastPath = localStorage.getItem('markdown-last-path')
+        if (!lastPath) return
+        try {
+          setStatus('Reopening last file…')
+          const text = await readTextFile(lastPath)
+          const name = getBaseName(lastPath)
+          setContent(text)
+          setFileName(name)
+          setCurrentFilePath(lastPath)
+          setFileHandle(null)
+          setLastSavedContent(text)
+          setStatus(`Reopened ${name}`)
+        } catch {
+          // File may have moved or been deleted
+          localStorage.removeItem('markdown-last-path')
+          setStatus('Could not reopen last file')
+        }
+        return
+      }
+
+      // Browser: handle is stored in IndexedDB
+      if (!window.showOpenFilePicker) return // fallback input — no handle to restore
+      try {
+        const handle = await idbGet<FileSystemFileHandle>('last-handle')
+        if (!handle) return
+
+        // queryPermission does NOT require a user gesture
+        const permission = await handle.queryPermission({ mode: 'read' })
+        if (permission !== 'granted') {
+          // Can't silently reopen — clear stored handle so we don't retry every launch
+          await idbDelete('last-handle').catch(() => {})
+          return
+        }
+
+        setStatus('Reopening last file…')
+        const file = await handle.getFile()
+        const text = await file.text()
+        setContent(text)
+        setFileName(file.name)
+        setCurrentFilePath(null)
+        setFileHandle(handle)
+        setLastSavedContent(text)
+        setStatus(`Reopened ${file.name}`)
+      } catch {
+        await idbDelete('last-handle').catch(() => {})
+      }
+    }
+
+    void reopenLastFile()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadFile = useCallback(async (file: File, handle?: FileSystemFileHandle) => {
@@ -403,6 +541,45 @@ function App() {
             <span className={`autosave-label ${(!currentFilePath && !fileHandle) ? 'disabled' : ''}`}>
               Auto-Save
             </span>
+          </div>
+
+          <button
+            id="dark-mode-toggle"
+            type="button"
+            onClick={() => setIsDarkMode(prev => !prev)}
+            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="theme-toggle-btn"
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+
+          <div className="font-size-control" role="group" aria-label="Font size">
+            <button
+              type="button"
+              id="font-size-decrease"
+              onClick={() => setFontSize(s => Math.max(MIN_FONT, s - 1))}
+              disabled={fontSize <= MIN_FONT}
+              title="Decrease text size"
+              aria-label="Decrease text size"
+              className="font-size-btn"
+            >
+              A−
+            </button>
+            <span className="font-size-display" aria-live="polite" aria-label={`Font size: ${fontSize} pixels`}>
+              {fontSize}px
+            </span>
+            <button
+              type="button"
+              id="font-size-increase"
+              onClick={() => setFontSize(s => Math.min(MAX_FONT, s + 1))}
+              disabled={fontSize >= MAX_FONT}
+              title="Increase text size"
+              aria-label="Increase text size"
+              className="font-size-btn"
+            >
+              A+
+            </button>
           </div>
 
           <button type="button" onClick={handleNewFile} title="New file (Ctrl/Cmd+N)">
