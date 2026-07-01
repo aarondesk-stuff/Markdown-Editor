@@ -39,7 +39,7 @@ To compile the static assets for web hosting:
 ```bash
 npm run build
 ```
-The compiled output is created in the `dist` directory, which can be deployed to GitHub Pages, Vercel, Netlify, or any web server.
+The compiled output is created in the `dist` directory, which can be deployed to Vercel, Netlify, or any static web server.
 
 ### Progressive Web App (PWA)
 When running on HTTPS (or localhost), you can install the app to your system in a standalone window using the browser's install prompt.
@@ -76,11 +76,4 @@ For convenience, you can launch the local web server without manually running co
 - **macOS**: Double-click `start-mac.command`
 - **Windows**: Double-click `start-windows.bat`
 - **VS Code**: Run the preconfigured task: `Terminal > Run Task... > dev`
-
-### Git Auto-Commit Watcher
-To automatically back up your work to your GitHub repository as you make changes:
-```bash
-npm run watch:git
-```
-This starts a background monitor that auto-commits and pushes any changes to GitHub after 10 seconds of keyboard inactivity.
 
